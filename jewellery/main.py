@@ -1,11 +1,8 @@
-from datetime import datetime
-from typing import Annotated
 from sqlalchemy.orm import Session
 from seller import models
 from seller.database import engine, SessionLocal
 from fastapi import FastAPI, Depends, Form
 from fastapi.responses import JSONResponse
-from seller.models import *
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -19,36 +16,64 @@ def get_db():
         db.close()
 
 
-db_dependency = Annotated[Session, Depends(get_db)]
-
-
-@app.post('/create_user/')
-def create_user(
-        name: str = Form(),
-        surname: str = Form(),
-        email: str = Form(),
-        role: str = Form(),
-        group: str = Form(),
-        password: str = Form(),
-        confirm_password: str = Form(),
-        db: Session = Depends(get_db)
-):
-    user_email = db.query(User).filter(User.email == email).first()
-    if user_email:
-        return JSONResponse({'message': 'Email is already exist'})
-    else:
-        if password == confirm_password:
-            new_user = User(
-                name=name,
-                surname=surname,
-                email=email,
-                role=role,
-                group=group,
-                password=password,
-                register_date=datetime.now()
-            )
-            db.add(new_user)
-            db.commit()
-            return JSONResponse({'message': 'User register successfully.', 'data': new_user.as_dict()})
+#
+# @app.post('/add_permission/')
+# def add_permission(name: str = Form(), codename: str = Form(), db: Session = Depends(get_db)):
+#     new_permission = models.Permission(
+#         name=name,
+#         codename=codename
+#     )
+#     db.add(new_permission)
+#     db.commit()
+#     return JSONResponse({'message': 'add permission successfully.'})
+#
+#
+@app.post('/user_request/')
+def user_request(user_name: str = Form(),
+                 user_surname: str = Form(),
+                 user_email: str = Form(),
+                 user_mobile_number: str = Form(),
+                 user_gst_number: str = Form(),
+                 user_shop_name: str = Form(),
+                 user_address: str = Form(),
+                 user_city: str = Form(),
+                 user_state: str = Form(),
+                 # status: str = Form(),
+                 # description: str = Form(),
+                 role: str = Form(),
+                 password: str = Form(),
+                 confirm_password: str = Form(),
+                 db: Session = Depends(get_db)):
+    try:
+        user = db.query(models.User).filter(models.User.user_email == user_email).first()
+        if not user:
+            if password == confirm_password:
+                new_user = models.User(
+                    user_name=user_name,
+                    user_surname=user_surname,
+                    user_email=user_email,
+                    user_mobile_number=user_mobile_number,
+                    user_gst_number=user_gst_number,
+                    user_shop_name=user_shop_name,
+                    user_address=user_address,
+                    user_city=user_city,
+                    user_state=user_state,
+                    role=role,
+                    user_password=password
+                )
+                db.add(new_user)
+                db.commit()
+                new_request = models.UserRequest(
+                    user_id=new_user.user_id
+                )
+                db.add(new_request)
+                db.commit()
+                return JSONResponse({'message': 'User Request Sending Successfully.'})
+            else:
+                return JSONResponse({'message': 'Password not match'})
         else:
-            return JSONResponse({'message': 'your password is not match'})
+            return JSONResponse({'message': 'email is already exist'})
+    except Exception as e:
+        return JSONResponse({'message': e.__str__()})
+
+
